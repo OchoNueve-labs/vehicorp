@@ -1,10 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const N8N_URL = process.env.N8N_API_URL!;
-const API_KEY = process.env.N8N_API_KEY!;
+const N8N_URL = process.env.N8N_API_URL;
+const API_KEY = process.env.N8N_API_KEY;
+
+const ALLOWED_PATHS = new Set([
+  "inventario", "inventario-disponible", "inventario-update",
+  "inventario-delete", "inventario-get", "inventario-estado",
+  "ventas", "notas-venta",
+  "clientes", "clientes-update", "clientes-delete",
+  "vendedores", "vendedores-update", "vendedores-delete",
+  "costos-fijos", "costos-fijos-update", "costos-fijos-delete",
+  "categorias-costos", "categorias-costos-delete",
+  "arriendos", "pagos-arriendo", "pagos-arriendo-create",
+  "dashboard", "dashboard-financiero",
+  "documentos-generar", "documentos-historial", "documentos-delete",
+]);
 
 async function proxy(req: NextRequest, method: string) {
+  if (!N8N_URL || !API_KEY) {
+    return NextResponse.json(
+      { success: false, error: { code: "CONFIG_ERROR", message: "Servidor no configurado" } },
+      { status: 500 }
+    );
+  }
+
   const pathSegments = req.nextUrl.pathname.replace("/api/vehicorp/", "");
+
+  if (!ALLOWED_PATHS.has(pathSegments)) {
+    return NextResponse.json(
+      { success: false, error: { code: "FORBIDDEN", message: "Endpoint no permitido" } },
+      { status: 403 }
+    );
+  }
+
   const search = req.nextUrl.search;
   const targetUrl = `${N8N_URL}/${pathSegments}${search}`;
 
@@ -28,9 +56,9 @@ async function proxy(req: NextRequest, method: string) {
     const res = await fetch(targetUrl, options);
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
-  } catch (err) {
+  } catch {
     return NextResponse.json(
-      { success: false, error: { code: "PROXY_ERROR", message: String(err) } },
+      { success: false, error: { code: "PROXY_ERROR", message: "Error de conexión con el servidor" } },
       { status: 502 }
     );
   }
