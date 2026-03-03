@@ -25,12 +25,12 @@ export function KpiCard({ title, value, subtitle, icon: Icon, loading, valueColo
             {loading ? (
               <Skeleton className="h-8 w-28" />
             ) : (
-              <p className={`text-2xl font-bold tracking-tight ${valueColor || ""}`}>{value}</p>
+              <p className={`text-2xl font-bold tracking-tight tabular-nums ${valueColor || ""}`}>{value}</p>
             )}
             {trend && !loading && (
               <div className={`flex items-center gap-1 text-xs font-medium ${trend.value >= 0 ? "text-emerald-500" : "text-red-500"}`}>
                 {trend.value >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                <span>{trend.value >= 0 ? "+" : ""}{trend.value}%</span>
+                <span className="tabular-nums">{trend.value >= 0 ? "+" : ""}{trend.value}%</span>
                 {trend.label && <span className="text-muted-foreground font-normal">{trend.label}</span>}
               </div>
             )}

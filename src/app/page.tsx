@@ -6,6 +6,7 @@ import { useApi } from "@/lib/hooks/use-api";
 import { KpiCard } from "@/components/shared/KpiCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { ChartTooltip } from "@/components/shared/ChartTooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -196,7 +197,7 @@ export default function DashboardPage() {
       {/* Valor del Inventario */}
       <div>
         <h2 className="text-sm font-medium text-muted-foreground mb-3">Valor del Inventario y Márgenes</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <KpiCard title="Valor Total Inventario" value={formatCLP(financiero?.valor_inventario)} icon={BarChart3} loading={loading} />
           <KpiCard title="Margen Potencial" value={formatCLP(financiero?.margen_potencial)} icon={TrendingUp} loading={loading} valueColor="text-emerald-500" />
         </div>
@@ -214,7 +215,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Distribución de Estados */}
         <Card>
           <CardHeader className="pb-2">
@@ -225,12 +226,18 @@ export default function DashboardPage() {
               <div className="h-[220px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
+                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" animationDuration={800} label={({ name, value }) => `${name}: ${value}`}>
                       {pieData.map((_, i) => (
                         <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip content={<ChartTooltip />} />
+                    <text x="50%" y="46%" textAnchor="middle" dominantBaseline="central" style={{ fill: "var(--foreground)", fontSize: "1.5rem", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                      {vehiculos.length}
+                    </text>
+                    <text x="50%" y="58%" textAnchor="middle" dominantBaseline="central" style={{ fill: "var(--muted-foreground)", fontSize: "0.7rem" }}>
+                      vehículos
+                    </text>
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -239,7 +246,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Distribución por Tipo */}
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Distribución por Tipo</CardTitle>
           </CardHeader>
@@ -248,10 +255,16 @@ export default function DashboardPage() {
               <div className="h-[220px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={tipoData} layout="vertical">
-                    <XAxis type="number" />
+                    <defs>
+                      <linearGradient id="gradTipo" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.2} />
+                        <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.9} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis type="number" tick={{ fontSize: 12 }} />
                     <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Bar dataKey="value" fill="var(--chart-1)" radius={[0, 4, 4, 0]} />
+                    <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--muted)", opacity: 0.3 }} />
+                    <Bar dataKey="value" fill="url(#gradTipo)" radius={[0, 4, 4, 0]} animationDuration={800} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -272,10 +285,16 @@ export default function DashboardPage() {
               <div className="h-[220px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={top5} layout="vertical">
-                    <XAxis type="number" tickFormatter={(v) => formatCLP(v)} />
+                    <defs>
+                      <linearGradient id="gradTop5" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.2} />
+                        <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0.9} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis type="number" tickFormatter={(v) => formatCLP(v)} tick={{ fontSize: 11 }} />
                     <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(v) => formatCLP(Number(v))} />
-                    <Bar dataKey="margen" fill="var(--chart-2)" radius={[0, 4, 4, 0]} />
+                    <Tooltip content={<ChartTooltip formatter={(v) => formatCLP(v)} />} cursor={{ fill: "var(--muted)", opacity: 0.3 }} />
+                    <Bar dataKey="margen" fill="url(#gradTop5)" radius={[0, 4, 4, 0]} animationDuration={800} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -293,10 +312,16 @@ export default function DashboardPage() {
               <div className="h-[220px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={comisionesData}>
+                    <defs>
+                      <linearGradient id="gradComisiones" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--chart-4)" stopOpacity={0.9} />
+                        <stop offset="100%" stopColor="var(--chart-4)" stopOpacity={0.2} />
+                      </linearGradient>
+                    </defs>
                     <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis tickFormatter={(v) => formatCLP(v)} width={100} />
-                    <Tooltip formatter={(v) => formatCLP(Number(v))} />
-                    <Bar dataKey="comision" fill="var(--chart-4)" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                    <YAxis tickFormatter={(v) => formatCLP(v)} width={100} tick={{ fontSize: 11 }} />
+                    <Tooltip content={<ChartTooltip formatter={(v) => formatCLP(v)} />} cursor={{ fill: "var(--muted)", opacity: 0.3 }} />
+                    <Bar dataKey="comision" fill="url(#gradComisiones)" radius={[4, 4, 0, 0]} maxBarSize={60} animationDuration={800} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -315,10 +340,16 @@ export default function DashboardPage() {
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={costosData}>
+                  <defs>
+                    <linearGradient id="gradCostos" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--chart-3)" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="var(--chart-3)" stopOpacity={0.2} />
+                    </linearGradient>
+                  </defs>
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tickFormatter={(v) => formatCLP(v)} width={100} />
-                  <Tooltip formatter={(v) => formatCLP(Number(v))} />
-                  <Bar dataKey="value" fill="var(--chart-3)" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                  <YAxis tickFormatter={(v) => formatCLP(v)} width={100} tick={{ fontSize: 11 }} />
+                  <Tooltip content={<ChartTooltip formatter={(v) => formatCLP(v)} />} cursor={{ fill: "var(--muted)", opacity: 0.3 }} />
+                  <Bar dataKey="value" fill="url(#gradCostos)" radius={[4, 4, 0, 0]} maxBarSize={60} animationDuration={800} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -346,7 +377,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       <StatusBadge status={v.estado} />
-                      <span className="text-sm font-bold text-red-400">{v.dias_stock}d</span>
+                      <span className="text-sm font-bold text-red-400 tabular-nums">{v.dias_stock}d</span>
                     </div>
                   </div>
                 ))}
