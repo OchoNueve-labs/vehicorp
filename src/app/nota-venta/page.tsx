@@ -387,10 +387,34 @@ function NuevaNotaForm() {
 
 function HistorialNotas() {
   const { data, loading, error } = useApi<StandardResponse<NotaVenta[]>>("notas-venta");
-  const notas = data?.data || [];
+  const allNotas = data?.data || [];
+  const [filterDesde, setFilterDesde] = useState("");
+  const [filterHasta, setFilterHasta] = useState("");
+
+  const notas = allNotas.filter((n) => {
+    if (filterDesde && n.fecha < filterDesde) return false;
+    if (filterHasta && n.fecha > filterHasta) return false;
+    return true;
+  });
 
   return (
-    <div className="mt-4">
+    <div className="mt-4 space-y-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <Label className="text-xs">Desde</Label>
+          <Input type="date" value={filterDesde} onChange={(e) => setFilterDesde(e.target.value)} className="w-auto" />
+        </div>
+        <div>
+          <Label className="text-xs">Hasta</Label>
+          <Input type="date" value={filterHasta} onChange={(e) => setFilterHasta(e.target.value)} className="w-auto" />
+        </div>
+        {(filterDesde || filterHasta) && (
+          <Button size="sm" variant="outline" onClick={() => { setFilterDesde(""); setFilterHasta(""); }}>
+            Limpiar
+          </Button>
+        )}
+        <p className="text-xs text-muted-foreground ml-auto">{notas.length} nota{notas.length !== 1 ? "s" : ""}</p>
+      </div>
       <EmptyState loading={loading} error={error} empty={notas.length === 0} emptyMessage="Sin notas de venta">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
