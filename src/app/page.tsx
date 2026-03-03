@@ -183,9 +183,10 @@ export default function DashboardPage() {
         <h2 className="text-sm font-medium text-muted-foreground mb-3">
           Resumen Financiero {finData?.periodo ? `(${finData.periodo.desde} — ${finData.periodo.hasta})` : ""}
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <KpiCard title="Total Ventas" value={formatCLP(fin?.total_ventas)} icon={DollarSign} loading={loading} />
           <KpiCard title="Utilidad Bruta" value={formatCLP(fin?.utilidad_bruta)} icon={TrendingUp} loading={loading} valueColor={(fin?.utilidad_bruta ?? 0) < 0 ? "text-red-500" : "text-emerald-500"} />
+          <KpiCard title="Financiamiento" value={formatCLP(fin?.margen_financiamiento)} icon={Percent} loading={loading} valueColor="text-blue-500" />
           <KpiCard title="Costos Operativos" value={formatCLP(fin?.costos_fijos)} icon={Receipt} loading={loading} />
           <KpiCard title="Comisiones" value={formatCLP(fin?.comisiones)} icon={Percent} loading={loading} />
           <KpiCard title="Utilidad Neta" value={formatCLP(fin?.utilidad_neta)} icon={Wallet} loading={loading} valueColor={(fin?.utilidad_neta ?? 0) < 0 ? "text-red-500" : "text-emerald-500"} />
@@ -198,7 +199,6 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <KpiCard title="Valor Total Inventario" value={formatCLP(financiero?.valor_inventario)} icon={BarChart3} loading={loading} />
           <KpiCard title="Margen Potencial" value={formatCLP(financiero?.margen_potencial)} icon={TrendingUp} loading={loading} valueColor="text-emerald-500" />
-          <KpiCard title="Utilidad Mes" value={formatCLP(financiero?.utilidad_mes)} icon={Wallet} loading={loading} valueColor={(financiero?.utilidad_mes ?? 0) < 0 ? "text-red-500" : "text-emerald-500"} />
         </div>
       </div>
 
@@ -294,9 +294,9 @@ export default function DashboardPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={comisionesData}>
                     <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis tickFormatter={(v) => formatCLP(v)} />
+                    <YAxis tickFormatter={(v) => formatCLP(v)} width={100} />
                     <Tooltip formatter={(v) => formatCLP(Number(v))} />
-                    <Bar dataKey="comision" fill="var(--chart-4)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="comision" fill="var(--chart-4)" radius={[4, 4, 0, 0]} maxBarSize={60} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -316,9 +316,9 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={costosData}>
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tickFormatter={(v) => formatCLP(v)} />
+                  <YAxis tickFormatter={(v) => formatCLP(v)} width={100} />
                   <Tooltip formatter={(v) => formatCLP(Number(v))} />
-                  <Bar dataKey="value" fill="var(--chart-3)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="value" fill="var(--chart-3)" radius={[4, 4, 0, 0]} maxBarSize={60} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
