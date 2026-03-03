@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { formatCLP, formatNumber } from "@/lib/utils";
+import { ESTADO_HEX_COLORS } from "@/lib/constants";
 import {
   DollarSign,
   TrendingUp,
@@ -226,9 +227,9 @@ export default function DashboardPage() {
               <div className="h-[220px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" animationDuration={800} label={({ name, value }) => `${name}: ${value}`}>
-                      {pieData.map((_, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" animationDuration={800}>
+                      {pieData.map((entry, i) => (
+                        <Cell key={i} fill={ESTADO_HEX_COLORS[entry.name] || CHART_COLORS[i % CHART_COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip content={<ChartTooltip />} />

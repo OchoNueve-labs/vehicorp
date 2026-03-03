@@ -30,6 +30,13 @@ export const ESTADO_COLORS: Record<string, string> = {
   Pendiente: "bg-amber-500/20 text-amber-400 border-amber-500/30",
 };
 
+export const ESTADO_HEX_COLORS: Record<string, string> = {
+  Disponible: "#34d399",       // emerald-400
+  Vendido: "#60a5fa",          // blue-400
+  Reservado: "#c084fc",        // purple-400
+  "En preparacion": "#fbbf24", // amber-400
+};
+
 export const CATEGORIA_COLORS: Record<string, string> = {
   Sueldo: "bg-blue-500",
   Arriendo: "bg-purple-500",
