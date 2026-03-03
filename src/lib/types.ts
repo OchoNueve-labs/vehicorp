@@ -119,11 +119,19 @@ export interface NotaVenta {
   margen_financiamiento: number;
   tiene_retoma: boolean;
   retoma_detalle: string | null;
+  retoma_marca: string | null;
+  retoma_modelo: string | null;
+  retoma_patente: string | null;
+  retoma_ano: number | null;
+  retoma_kms: number | null;
+  retoma_valor: number | null;
   vendedor_nombre: string | null;
   comision_monto: number;
   comision_porcentaje: number;
   es_reserva: boolean;
   monto_reserva: number;
+  reserva_fecha_vencimiento: string | null;
+  reserva_notas: string | null;
   estado: string;
   created_at: string | null;
 }

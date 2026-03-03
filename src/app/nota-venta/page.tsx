@@ -11,8 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { formatCLP, formatDate } from "@/lib/utils";
+import { ArrowLeftRight, Bookmark } from "lucide-react";
 import type { Vehiculo, Cliente, Vendedor, NotaVenta, StandardResponse } from "@/lib/types";
 
 export default function NotaVentaPage() {
@@ -50,9 +53,16 @@ function NuevaNotaForm() {
   const [montoFinanciado, setMontoFinanciado] = useState(0);
   const [margenFinanciamiento, setMargenFinanciamiento] = useState(0);
   const [tieneRetoma, setTieneRetoma] = useState(false);
-  const [retomaDetalle, setRetomaDetalle] = useState("");
+  const [retomaMarca, setRetomaMarca] = useState("");
+  const [retomaModelo, setRetomaModelo] = useState("");
+  const [retomaPatente, setRetomaPatente] = useState("");
+  const [retomaAno, setRetomaAno] = useState<number>(0);
+  const [retomaKms, setRetomaKms] = useState<number>(0);
+  const [retomaValor, setRetomaValor] = useState<number>(0);
   const [esReserva, setEsReserva] = useState(false);
   const [montoReserva, setMontoReserva] = useState(0);
+  const [reservaFechaVencimiento, setReservaFechaVencimiento] = useState("");
+  const [reservaNotas, setReservaNotas] = useState("");
 
   const veh = vehiculos.find((v) => v.id === vehiculoId);
   const cli = clientes.find((c) => c.id === clienteId);
@@ -60,7 +70,7 @@ function NuevaNotaForm() {
 
   const valorVehiculo = veh?.precio_venta || 0;
   const valorFinal = valorVehiculo - descuento;
-  const totalCliente = valorFinal + costoTransferencia;
+  const totalCliente = valorFinal + costoTransferencia - (tieneRetoma ? retomaValor : 0);
   const comisionPorcentaje = vend?.tipo_comision === "porcentaje" ? vend.comision_valor : 0;
   const comisionMonto = vend?.tipo_comision === "monto_fijo" ? vend.comision_valor : valorFinal * (comisionPorcentaje / 100);
 
@@ -68,6 +78,14 @@ function NuevaNotaForm() {
     e.preventDefault();
     if (!vehiculoId || !clienteId || !vendedorId) {
       toast.error("Selecciona vehículo, cliente y vendedor");
+      return;
+    }
+    if (tieneRetoma && (!retomaMarca || !retomaModelo || !retomaPatente || !retomaAno || !retomaKms)) {
+      toast.error("Completa todos los campos de retoma");
+      return;
+    }
+    if (esReserva && !montoReserva) {
+      toast.error("Ingresa el monto de reserva");
       return;
     }
     setSaving(true);
@@ -94,12 +112,22 @@ function NuevaNotaForm() {
           comision_porcentaje: comisionPorcentaje,
         },
         retoma: {
-          tiene_retoma: tieneRetoma,
-          ...(tieneRetoma ? { detalle: retomaDetalle } : {}),
+          tiene: tieneRetoma,
+          ...(tieneRetoma ? {
+            marca: retomaMarca,
+            modelo: retomaModelo,
+            patente: retomaPatente,
+            año: retomaAno,
+            kms: retomaKms,
+            valor: retomaValor,
+          } : {}),
         },
         reserva: {
-          es_reserva: esReserva,
-          ...(esReserva ? { monto_reserva: montoReserva } : {}),
+          monto: esReserva ? montoReserva : 0,
+          ...(esReserva ? {
+            fecha_vencimiento: reservaFechaVencimiento || null,
+            notas: reservaNotas || null,
+          } : {}),
         },
       });
       toast.success("Nota de venta creada exitosamente");
@@ -112,9 +140,16 @@ function NuevaNotaForm() {
       setMontoFinanciado(0);
       setMargenFinanciamiento(0);
       setTieneRetoma(false);
-      setRetomaDetalle("");
+      setRetomaMarca("");
+      setRetomaModelo("");
+      setRetomaPatente("");
+      setRetomaAno(0);
+      setRetomaKms(0);
+      setRetomaValor(0);
       setEsReserva(false);
       setMontoReserva(0);
+      setReservaFechaVencimiento("");
+      setReservaNotas("");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al crear nota");
     } finally {
@@ -210,14 +245,44 @@ function NuevaNotaForm() {
 
       {/* Retoma */}
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Retoma</CardTitle></CardHeader>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
+            Retoma
+          </CardTitle>
+        </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center gap-2">
             <Switch checked={tieneRetoma} onCheckedChange={setTieneRetoma} />
-            <Label className="text-sm">Tiene retoma</Label>
+            <Label className="text-sm">¿Incluye retoma?</Label>
           </div>
           {tieneRetoma && (
-            <textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[60px]" placeholder="Detalle de la retoma..." value={retomaDetalle} onChange={(e) => setRetomaDetalle(e.target.value)} />
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div>
+                <Label className="text-xs">Marca *</Label>
+                <Input placeholder="Ej: Toyota" value={retomaMarca} onChange={(e) => setRetomaMarca(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Modelo *</Label>
+                <Input placeholder="Ej: Hilux" value={retomaModelo} onChange={(e) => setRetomaModelo(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Patente *</Label>
+                <Input placeholder="Ej: ABCD-12" value={retomaPatente} onChange={(e) => setRetomaPatente(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Año *</Label>
+                <Input type="number" placeholder="2020" value={retomaAno || ""} onChange={(e) => setRetomaAno(Number(e.target.value))} />
+              </div>
+              <div>
+                <Label className="text-xs">Kilómetros *</Label>
+                <Input type="number" placeholder="50000" value={retomaKms || ""} onChange={(e) => setRetomaKms(Number(e.target.value))} />
+              </div>
+              <div>
+                <Label className="text-xs">Valor Retoma *</Label>
+                <Input type="number" placeholder="0" value={retomaValor || ""} onChange={(e) => setRetomaValor(Number(e.target.value))} />
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -240,26 +305,82 @@ function NuevaNotaForm() {
         </CardContent>
       </Card>
 
-      {/* Reserva */}
+      {/* Reserva (Seña) */}
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Reserva</CardTitle></CardHeader>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Bookmark className="h-4 w-4 text-muted-foreground" />
+            Reserva (Seña)
+          </CardTitle>
+        </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center gap-2">
             <Switch checked={esReserva} onCheckedChange={setEsReserva} />
-            <Label className="text-sm">Es reserva</Label>
+            <Label className="text-sm">¿Es una reserva?</Label>
           </div>
           {esReserva && (
-            <div>
-              <Label className="text-xs">Monto Reserva</Label>
-              <Input type="number" value={montoReserva} onChange={(e) => setMontoReserva(Number(e.target.value))} />
-            </div>
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Monto de Reserva *</Label>
+                  <Input type="number" value={montoReserva || ""} onChange={(e) => setMontoReserva(Number(e.target.value))} />
+                </div>
+                <div>
+                  <Label className="text-xs flex items-center gap-1">
+                    <span>Fecha de Vencimiento</span>
+                  </Label>
+                  <Input type="date" value={reservaFechaVencimiento} onChange={(e) => setReservaFechaVencimiento(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Notas de Reserva</Label>
+                <Textarea placeholder="Ej: Cliente paga saldo en 7 días" value={reservaNotas} onChange={(e) => setReservaNotas(e.target.value)} />
+              </div>
+              {montoReserva > 0 && montoReserva >= totalCliente && (
+                <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-400">
+                  El monto ingresado cubre el valor total del vehículo. Al continuar, se le preguntará si desea procesar como venta completa.
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
 
-      <Button type="submit" className="w-full" disabled={saving}>
-        {saving ? "Creando nota..." : "Crear Nota de Venta"}
-      </Button>
+      <div className="flex items-center justify-between">
+        <div>
+          {esReserva && (
+            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+              RESERVA
+            </Badge>
+          )}
+        </div>
+        <div className="flex gap-2">
+          {esReserva && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setEsReserva(false);
+                setMontoReserva(0);
+                setReservaFechaVencimiento("");
+                setReservaNotas("");
+              }}
+            >
+              Cancelar
+            </Button>
+          )}
+          <Button
+            type="submit"
+            className={esReserva ? "bg-purple-600 hover:bg-purple-700" : ""}
+            disabled={saving}
+          >
+            {saving
+              ? (esReserva ? "Generando reserva..." : "Creando nota...")
+              : (esReserva ? "Generar Reserva" : "Crear Nota de Venta")
+            }
+          </Button>
+        </div>
+      </div>
     </form>
   );
 }
