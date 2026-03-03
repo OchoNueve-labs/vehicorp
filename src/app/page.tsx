@@ -1,10 +1,14 @@
 "use client";
 
+import { useState, useCallback, useEffect } from "react";
+import { apiGet } from "@/lib/api";
 import { useApi } from "@/lib/hooks/use-api";
 import { KpiCard } from "@/components/shared/KpiCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { formatCLP, formatNumber } from "@/lib/utils";
 import {
   DollarSign,
@@ -19,6 +23,7 @@ import {
   BarChart3,
   Clock,
   AlertTriangle,
+  CalendarDays,
 } from "lucide-react";
 import {
   PieChart,
@@ -38,12 +43,51 @@ import type {
   StandardResponse,
 } from "@/lib/types";
 
-const PIE_COLORS = ["#10b981", "#8b5cf6", "#3b82f6", "#f59e0b", "#ef4444"];
+const CHART_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+];
+
+function getMonthRange() {
+  const now = new Date();
+  const desde = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+  const hasta = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+  return { desde, hasta };
+}
 
 export default function DashboardPage() {
+  const defaultRange = getMonthRange();
+  const [fechaDesde, setFechaDesde] = useState(defaultRange.desde);
+  const [fechaHasta, setFechaHasta] = useState(defaultRange.hasta);
+
   const { data: dashData, loading: l1, error: e1 } = useApi<DashboardData>("dashboard");
-  const { data: finData, loading: l2, error: e2 } = useApi<DashboardFinanciero>("dashboard-financiero");
   const { data: invData, loading: l3, error: e3 } = useApi<StandardResponse<Vehiculo[]>>("inventario");
+
+  // Financial data with date filter
+  const [finData, setFinData] = useState<DashboardFinanciero | null>(null);
+  const [l2, setL2] = useState(true);
+  const [e2, setE2] = useState<string | null>(null);
+
+  const fetchFinanciero = useCallback(async () => {
+    setL2(true);
+    setE2(null);
+    try {
+      const params = `?fechaDesde=${fechaDesde}&fechaHasta=${fechaHasta}`;
+      const result = await apiGet<DashboardFinanciero>(`dashboard-financiero${params}`);
+      setFinData(result);
+    } catch (err) {
+      setE2(err instanceof Error ? err.message : "Error");
+    } finally {
+      setL2(false);
+    }
+  }, [fechaDesde, fechaHasta]);
+
+  useEffect(() => {
+    fetchFinanciero();
+  }, [fetchFinanciero]);
 
   const loading = l1 || l2 || l3;
   const error = e1 || e2 || e3;
@@ -102,17 +146,49 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Panel de Control</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold">Panel de Control</h1>
+        <div className="flex items-center gap-2">
+          <CalendarDays className="h-4 w-4 text-muted-foreground" />
+          <Input
+            type="date"
+            className="w-auto h-8 text-xs"
+            value={fechaDesde}
+            onChange={(e) => setFechaDesde(e.target.value)}
+          />
+          <span className="text-xs text-muted-foreground">—</span>
+          <Input
+            type="date"
+            className="w-auto h-8 text-xs"
+            value={fechaHasta}
+            onChange={(e) => setFechaHasta(e.target.value)}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs"
+            onClick={() => {
+              const r = getMonthRange();
+              setFechaDesde(r.desde);
+              setFechaHasta(r.hasta);
+            }}
+          >
+            Este mes
+          </Button>
+        </div>
+      </div>
 
-      {/* Resumen Financiero Mensual */}
+      {/* Resumen Financiero */}
       <div>
-        <h2 className="text-sm font-medium text-muted-foreground mb-3">Resumen Financiero Mensual</h2>
+        <h2 className="text-sm font-medium text-muted-foreground mb-3">
+          Resumen Financiero {finData?.periodo ? `(${finData.periodo.desde} — ${finData.periodo.hasta})` : ""}
+        </h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           <KpiCard title="Total Ventas" value={formatCLP(fin?.total_ventas)} icon={DollarSign} loading={loading} />
-          <KpiCard title="Utilidad Bruta" value={formatCLP(fin?.utilidad_bruta)} icon={TrendingUp} loading={loading} valueColor={(fin?.utilidad_bruta ?? 0) < 0 ? "text-red-400" : "text-emerald-400"} />
+          <KpiCard title="Utilidad Bruta" value={formatCLP(fin?.utilidad_bruta)} icon={TrendingUp} loading={loading} valueColor={(fin?.utilidad_bruta ?? 0) < 0 ? "text-red-500" : "text-emerald-500"} />
           <KpiCard title="Costos Operativos" value={formatCLP(fin?.costos_fijos)} icon={Receipt} loading={loading} />
           <KpiCard title="Comisiones" value={formatCLP(fin?.comisiones)} icon={Percent} loading={loading} />
-          <KpiCard title="Utilidad Neta" value={formatCLP(fin?.utilidad_neta)} icon={Wallet} loading={loading} valueColor={(fin?.utilidad_neta ?? 0) < 0 ? "text-red-400" : "text-emerald-400"} />
+          <KpiCard title="Utilidad Neta" value={formatCLP(fin?.utilidad_neta)} icon={Wallet} loading={loading} valueColor={(fin?.utilidad_neta ?? 0) < 0 ? "text-red-500" : "text-emerald-500"} />
         </div>
       </div>
 
@@ -121,8 +197,8 @@ export default function DashboardPage() {
         <h2 className="text-sm font-medium text-muted-foreground mb-3">Valor del Inventario y Márgenes</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <KpiCard title="Valor Total Inventario" value={formatCLP(financiero?.valor_inventario)} icon={BarChart3} loading={loading} />
-          <KpiCard title="Margen Potencial" value={formatCLP(financiero?.margen_potencial)} icon={TrendingUp} loading={loading} valueColor="text-emerald-400" />
-          <KpiCard title="Utilidad Mes" value={formatCLP(financiero?.utilidad_mes)} icon={Wallet} loading={loading} valueColor={(financiero?.utilidad_mes ?? 0) < 0 ? "text-red-400" : "text-emerald-400"} />
+          <KpiCard title="Margen Potencial" value={formatCLP(financiero?.margen_potencial)} icon={TrendingUp} loading={loading} valueColor="text-emerald-500" />
+          <KpiCard title="Utilidad Mes" value={formatCLP(financiero?.utilidad_mes)} icon={Wallet} loading={loading} valueColor={(financiero?.utilidad_mes ?? 0) < 0 ? "text-red-500" : "text-emerald-500"} />
         </div>
       </div>
 
@@ -131,9 +207,9 @@ export default function DashboardPage() {
         <h2 className="text-sm font-medium text-muted-foreground mb-3">KPIs Inventario</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KpiCard title="Total en Stock" value={formatNumber(resumen?.total_stock)} icon={Car} loading={loading} />
-          <KpiCard title="Disponibles" value={formatNumber(resumen?.disponibles)} icon={CheckCircle} loading={loading} valueColor="text-emerald-400" />
-          <KpiCard title="Reservados" value={formatNumber(resumen?.reservados)} icon={Bookmark} loading={loading} valueColor="text-purple-400" />
-          <KpiCard title="Vendidos este Mes" value={formatNumber(resumen?.vendidos_mes)} icon={ShoppingCart} loading={loading} valueColor="text-blue-400" />
+          <KpiCard title="Disponibles" value={formatNumber(resumen?.disponibles)} icon={CheckCircle} loading={loading} valueColor="text-emerald-500" />
+          <KpiCard title="Reservados" value={formatNumber(resumen?.reservados)} icon={Bookmark} loading={loading} valueColor="text-purple-500" />
+          <KpiCard title="Vendidos este Mes" value={formatNumber(resumen?.vendidos_mes)} icon={ShoppingCart} loading={loading} valueColor="text-blue-500" />
         </div>
       </div>
 
@@ -151,7 +227,7 @@ export default function DashboardPage() {
                   <PieChart>
                     <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
                       {pieData.map((_, i) => (
-                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip />
@@ -175,7 +251,7 @@ export default function DashboardPage() {
                     <XAxis type="number" />
                     <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
                     <Tooltip />
-                    <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="value" fill="var(--chart-1)" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -199,7 +275,7 @@ export default function DashboardPage() {
                     <XAxis type="number" tickFormatter={(v) => formatCLP(v)} />
                     <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 11 }} />
                     <Tooltip formatter={(v) => formatCLP(Number(v))} />
-                    <Bar dataKey="margen" fill="#10b981" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="margen" fill="var(--chart-2)" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -220,7 +296,7 @@ export default function DashboardPage() {
                     <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                     <YAxis tickFormatter={(v) => formatCLP(v)} />
                     <Tooltip formatter={(v) => formatCLP(Number(v))} />
-                    <Bar dataKey="comision" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="comision" fill="var(--chart-4)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -242,7 +318,7 @@ export default function DashboardPage() {
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={(v) => formatCLP(v)} />
                   <Tooltip formatter={(v) => formatCLP(Number(v))} />
-                  <Bar dataKey="value" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="value" fill="var(--chart-3)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

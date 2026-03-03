@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { AppShell } from "@/components/layout/AppShell";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "IAuto - CRM para Automotoras",
-  description: "Sistema de gestion integral para automotoras",
+  title: "Vehicorp - CRM Automotora",
+  description: "Sistema de gestión integral para automotoras",
 };
 
 export default function RootLayout({
@@ -26,6 +27,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AppShell>{children}</AppShell>
+          <Toaster richColors position="top-right" />
         </ThemeProvider>
       </body>
     </html>

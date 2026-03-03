@@ -1,15 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { useApi } from "@/lib/hooks/use-api";
 import { apiPost } from "@/lib/api";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Search, Edit, Trash2 } from "lucide-react";
+import { useSort } from "@/lib/hooks/use-sort";
+import { SortHeader } from "@/components/shared/SortHeader";
 import type { Cliente } from "@/lib/types";
 
 const EMPTY_FORM = {
@@ -24,13 +28,15 @@ export default function ClientesPage() {
   const [editing, setEditing] = useState<Cliente | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Cliente | null>(null);
 
   const clientes = data?.clientes || [];
-  const filtered = clientes.filter((c) => {
+  const searched = clientes.filter((c) => {
     if (!search) return true;
     const q = search.toLowerCase();
     return c.nombre?.toLowerCase().includes(q) || c.rut?.toLowerCase().includes(q);
   });
+  const { sorted: filtered, sortKey, sortDir, toggleSort } = useSort(searched, "nombre");
 
   function openNew() {
     setEditing(null);
@@ -57,7 +63,7 @@ export default function ClientesPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.nombre || !form.rut) {
-      alert("Nombre y RUT son obligatorios");
+      toast.error("Nombre y RUT son obligatorios");
       return;
     }
     setSaving(true);
@@ -68,21 +74,21 @@ export default function ClientesPage() {
         await apiPost("clientes", form);
       }
       setOpen(false);
+      toast.success(editing ? "Cliente actualizado" : "Cliente creado");
       refetch();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error");
+      toast.error(err instanceof Error ? err.message : "Error");
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(c: Cliente) {
-    if (!confirm(`¿Eliminar a ${c.nombre}?`)) return;
     try {
       await apiPost("clientes-delete", { id: c.id });
       refetch();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error");
+      toast.error(err instanceof Error ? err.message : "Error");
     }
   }
 
@@ -103,11 +109,11 @@ export default function ClientesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-muted-foreground">
-                <th className="py-2 pr-3">Nombre</th>
-                <th className="py-2 pr-3">RUT</th>
+                <th className="py-2 pr-3"><SortHeader label="Nombre" active={sortKey === "nombre"} direction={sortDir} onClick={() => toggleSort("nombre")} /></th>
+                <th className="py-2 pr-3"><SortHeader label="RUT" active={sortKey === "rut"} direction={sortDir} onClick={() => toggleSort("rut")} /></th>
                 <th className="py-2 pr-3">Teléfono</th>
                 <th className="py-2 pr-3">Correo</th>
-                <th className="py-2 pr-3">Ciudad</th>
+                <th className="py-2 pr-3"><SortHeader label="Ciudad" active={sortKey === "ciudad"} direction={sortDir} onClick={() => toggleSort("ciudad")} /></th>
                 <th className="py-2 pr-3">Acciones</th>
               </tr>
             </thead>
@@ -122,7 +128,7 @@ export default function ClientesPage() {
                   <td className="py-2 pr-3">
                     <div className="flex gap-1">
                       <Button size="sm" variant="ghost" onClick={() => openEdit(c)}><Edit className="h-3.5 w-3.5" /></Button>
-                      <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(c)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteTarget(c)}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   </td>
                 </tr>
@@ -182,6 +188,14 @@ export default function ClientesPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title={`¿Eliminar a ${deleteTarget?.nombre}?`}
+        description="Esta acción no se puede deshacer."
+        onConfirm={() => { if (deleteTarget) handleDelete(deleteTarget); }}
+      />
     </div>
   );
 }

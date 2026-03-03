@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { useApi } from "@/lib/hooks/use-api";
 import { apiPost } from "@/lib/api";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { KpiCard } from "@/components/shared/KpiCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +16,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { formatCLP, formatDate } from "@/lib/utils";
 import { Plus, Trash2, DollarSign } from "lucide-react";
 import { CATEGORIA_COLORS } from "@/lib/constants";
-import type { CostosResponse, Categoria } from "@/lib/types";
+import { useSort } from "@/lib/hooks/use-sort";
+import { SortHeader } from "@/components/shared/SortHeader";
+import type { CostosResponse, Categoria, CostoFijo } from "@/lib/types";
 
 export default function CostosFijosPage() {
   const { data, loading, error, refetch } = useApi<CostosResponse>("costos-fijos");
@@ -25,22 +29,24 @@ export default function CostosFijosPage() {
   const [filterDesde, setFilterDesde] = useState("");
   const [filterHasta, setFilterHasta] = useState("");
   const [form, setForm] = useState({ fecha: new Date().toISOString().split("T")[0], categoria: "", descripcion: "", monto: 0, recurrente: false });
+  const [deleteTarget, setDeleteTarget] = useState<CostoFijo | null>(null);
 
   const costos = data?.costos || [];
   const porCategoria = data?.por_categoria || {};
   const categorias = catData?.categorias || [];
 
-  const filtered = costos.filter((c) => {
+  const searched = costos.filter((c) => {
     if (filterCat && c.categoria !== filterCat) return false;
     if (filterDesde && c.fecha < filterDesde) return false;
     if (filterHasta && c.fecha > filterHasta) return false;
     return true;
   });
+  const { sorted: filtered, sortKey, sortDir, toggleSort } = useSort(searched, "fecha");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.descripcion || !form.monto || !form.categoria) {
-      alert("Categoría, descripción y monto son obligatorios");
+      toast.error("Categoría, descripción y monto son obligatorios");
       return;
     }
     setSaving(true);
@@ -48,21 +54,21 @@ export default function CostosFijosPage() {
       await apiPost("costos-fijos", { ...form, monto: Number(form.monto) });
       setOpen(false);
       setForm({ fecha: new Date().toISOString().split("T")[0], categoria: "", descripcion: "", monto: 0, recurrente: false });
+      toast.success("Costo agregado");
       refetch();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error");
+      toast.error(err instanceof Error ? err.message : "Error");
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("¿Eliminar este costo?")) return;
     try {
       await apiPost("costos-fijos-delete", { id });
       refetch();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error");
+      toast.error(err instanceof Error ? err.message : "Error");
     }
   }
 
@@ -97,10 +103,10 @@ export default function CostosFijosPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-muted-foreground">
-                <th className="py-2 pr-3">Fecha</th>
-                <th className="py-2 pr-3">Categoría</th>
+                <th className="py-2 pr-3"><SortHeader label="Fecha" active={sortKey === "fecha"} direction={sortDir} onClick={() => toggleSort("fecha")} /></th>
+                <th className="py-2 pr-3"><SortHeader label="Categoría" active={sortKey === "categoria"} direction={sortDir} onClick={() => toggleSort("categoria")} /></th>
                 <th className="py-2 pr-3">Descripción</th>
-                <th className="py-2 pr-3">Monto</th>
+                <th className="py-2 pr-3"><SortHeader label="Monto" active={sortKey === "monto"} direction={sortDir} onClick={() => toggleSort("monto")} /></th>
                 <th className="py-2 pr-3">Recurrente</th>
                 <th className="py-2"></th>
               </tr>
@@ -117,7 +123,7 @@ export default function CostosFijosPage() {
                   <td className="py-2 pr-3 font-semibold">{formatCLP(c.monto)}</td>
                   <td className="py-2 pr-3">{c.recurrente ? "Sí" : "No"}</td>
                   <td className="py-2">
-                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(c.id)}>
+                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteTarget(c)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </td>
@@ -165,6 +171,14 @@ export default function CostosFijosPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title="¿Eliminar este costo?"
+        description={deleteTarget ? `${deleteTarget.descripcion} — ${deleteTarget.categoria}` : ""}
+        onConfirm={() => { if (deleteTarget) handleDelete(deleteTarget.id); }}
+      />
     </div>
   );
 }

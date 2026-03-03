@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useApi } from "@/lib/hooks/use-api";
 import { apiPost } from "@/lib/api";
+import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCLP, formatDate } from "@/lib/utils";
 import type { Vehiculo, Cliente, Arriendo, StandardResponse } from "@/lib/types";
@@ -32,7 +34,6 @@ function NuevoArriendoForm() {
   const { data: vehData } = useApi<{ vehiculos: Vehiculo[]; cantidad: number }>("inventario-disponible");
   const { data: cliData } = useApi<{ clientes: Cliente[]; cantidad: number }>("clientes");
   const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState(false);
 
   const vehiculos = vehData?.vehiculos || [];
   const clientes = cliData?.clientes || [];
@@ -43,10 +44,18 @@ function NuevoArriendoForm() {
   const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().split("T")[0]);
   const [fechaFin, setFechaFin] = useState("");
 
+  function resetForm() {
+    setVehiculoId("");
+    setClienteId("");
+    setMontoMensual(0);
+    setFechaInicio(new Date().toISOString().split("T")[0]);
+    setFechaFin("");
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!vehiculoId || !clienteId || !montoMensual) {
-      alert("Vehículo, cliente y monto son obligatorios");
+      toast.error("Vehículo, cliente y monto son obligatorios");
       return;
     }
     setSaving(true);
@@ -58,23 +67,13 @@ function NuevoArriendoForm() {
         fecha_inicio: fechaInicio,
         ...(fechaFin ? { fecha_fin: fechaFin } : {}),
       });
-      setSuccess(true);
+      toast.success("Arriendo creado exitosamente");
+      resetForm();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error");
+      toast.error(err instanceof Error ? err.message : "Error al crear arriendo");
     } finally {
       setSaving(false);
     }
-  }
-
-  if (success) {
-    return (
-      <Card className="mt-4">
-        <CardContent className="p-8 text-center space-y-3">
-          <p className="text-lg font-semibold text-emerald-400">Arriendo creado exitosamente</p>
-          <Button onClick={() => setSuccess(false)}>Crear otro arriendo</Button>
-        </CardContent>
-      </Card>
-    );
   }
 
   return (
@@ -103,15 +102,15 @@ function NuevoArriendoForm() {
           <div className="grid grid-cols-3 gap-3">
             <div>
               <Label className="text-xs">Monto Mensual</Label>
-              <input type="number" className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm" value={montoMensual} onChange={(e) => setMontoMensual(Number(e.target.value))} />
+              <Input type="number" value={montoMensual} onChange={(e) => setMontoMensual(Number(e.target.value))} />
             </div>
             <div>
               <Label className="text-xs">Fecha Inicio</Label>
-              <input type="date" className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
+              <Input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
             </div>
             <div>
               <Label className="text-xs">Fecha Fin (opcional)</Label>
-              <input type="date" className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
+              <Input type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
             </div>
           </div>
         </CardContent>
@@ -125,7 +124,28 @@ function NuevoArriendoForm() {
 
 function HistorialArriendos() {
   const { data, loading, error } = useApi<StandardResponse<Arriendo[]>>("arriendos");
+  const { data: vehData } = useApi<StandardResponse<Vehiculo[]>>("inventario");
+  const { data: cliData } = useApi<{ clientes: Cliente[]; cantidad: number }>("clientes");
+
   const arriendos = data?.data || [];
+  const vehiculos = vehData?.data || [];
+  const clientes = cliData?.clientes || [];
+
+  const vehiculoMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const v of vehiculos) {
+      map.set(v.id, `${v.marca ? v.marca + " " : ""}${v.modelo} (${v.patente})`);
+    }
+    return map;
+  }, [vehiculos]);
+
+  const clienteMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of clientes) {
+      map.set(c.id, c.nombre);
+    }
+    return map;
+  }, [clientes]);
 
   return (
     <div className="mt-4">
@@ -147,8 +167,8 @@ function HistorialArriendos() {
               {arriendos.map((a) => (
                 <tr key={a.id} className="border-b border-border">
                   <td className="py-2 pr-3 font-mono text-xs">{a.id}</td>
-                  <td className="py-2 pr-3">{a.vehiculo_id}</td>
-                  <td className="py-2 pr-3">{a.cliente_id}</td>
+                  <td className="py-2 pr-3">{vehiculoMap.get(a.vehiculo_id) || a.vehiculo_id}</td>
+                  <td className="py-2 pr-3">{clienteMap.get(a.cliente_id) || a.cliente_id}</td>
                   <td className="py-2 pr-3 font-semibold">{formatCLP(a.monto_mensual)}</td>
                   <td className="py-2 pr-3">{formatDate(a.fecha_inicio)}</td>
                   <td className="py-2 pr-3">{a.fecha_fin ? formatDate(a.fecha_fin) : "-"}</td>

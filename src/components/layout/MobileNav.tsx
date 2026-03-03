@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import { Car, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 export function MobileNav() {
   const pathname = usePathname();
@@ -17,7 +18,7 @@ export function MobileNav() {
       <div className="flex items-center justify-between px-4 py-3 border-b bg-card">
         <div className="flex items-center gap-2">
           <Car className="h-6 w-6 text-primary" />
-          <span className="font-bold">IAuto</span>
+          <span className="font-bold">Vehicorp</span>
         </div>
         <Button variant="ghost" size="icon" onClick={() => setOpen(!open)}>
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -25,6 +26,7 @@ export function MobileNav() {
       </div>
       {open && (
         <nav className="px-3 py-2 border-b bg-card space-y-1">
+          <ThemeToggle />
           {NAV_ITEMS.map((item) => {
             const isActive =
               item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);

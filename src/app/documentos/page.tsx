@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useApi } from "@/lib/hooks/use-api";
 import { apiPost } from "@/lib/api";
+import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -49,7 +51,7 @@ function NuevoDocumento() {
 
   async function generate(tipo: string) {
     if (!vehiculoId || !clienteId) {
-      alert("Selecciona vehículo y cliente");
+      toast.error("Selecciona vehículo y cliente");
       return;
     }
     setGenerating(tipo);
@@ -60,9 +62,10 @@ function NuevoDocumento() {
         vehiculo_id: vehiculoId,
         cliente_id: clienteId,
       });
+      toast.success("Documento generado exitosamente");
       setResult({ tipo, url: res.url });
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error al generar");
+      toast.error(err instanceof Error ? err.message : "Error al generar");
     } finally {
       setGenerating(null);
     }
@@ -131,15 +134,35 @@ function NuevoDocumento() {
 
 function HistorialDocumentos() {
   const { data, loading, error, refetch } = useApi<StandardResponse<Documento[]>>("documentos-historial");
+  const { data: invData } = useApi<StandardResponse<Vehiculo[]>>("inventario");
+  const { data: cliData } = useApi<{ clientes: Cliente[]; cantidad: number }>("clientes");
+  const [deleteTarget, setDeleteTarget] = useState<Documento | null>(null);
+
   const documentos = data?.data || [];
 
+  const vehiculoMap = useMemo(() => {
+    const m = new Map<string, string>();
+    (invData?.data || []).forEach((v) => {
+      m.set(v.id, `${v.marca ? v.marca + " " : ""}${v.modelo} (${v.patente})`);
+    });
+    return m;
+  }, [invData]);
+
+  const clienteMap = useMemo(() => {
+    const m = new Map<string, string>();
+    (cliData?.clientes || []).forEach((c) => {
+      m.set(c.id, c.nombre);
+    });
+    return m;
+  }, [cliData]);
+
   async function handleDelete(id: string) {
-    if (!confirm("¿Eliminar este documento?")) return;
     try {
       await apiPost("documentos-delete", { id });
+      toast.success("Documento eliminado");
       refetch();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error");
+      toast.error(err instanceof Error ? err.message : "Error");
     }
   }
 
@@ -162,8 +185,8 @@ function HistorialDocumentos() {
               {documentos.map((d) => (
                 <tr key={d.id} className="border-b border-border">
                   <td className="py-2 pr-3">{d.tipo}</td>
-                  <td className="py-2 pr-3">{d.vehiculo_id}</td>
-                  <td className="py-2 pr-3">{d.cliente_id}</td>
+                  <td className="py-2 pr-3">{vehiculoMap.get(d.vehiculo_id) || d.vehiculo_id}</td>
+                  <td className="py-2 pr-3">{clienteMap.get(d.cliente_id) || d.cliente_id}</td>
                   <td className="py-2 pr-3">{formatDate(d.created_at)}</td>
                   <td className="py-2 pr-3">
                     {d.url ? (
@@ -171,7 +194,7 @@ function HistorialDocumentos() {
                     ) : "-"}
                   </td>
                   <td className="py-2">
-                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(d.id)}>
+                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteTarget(d)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </td>
@@ -181,6 +204,14 @@ function HistorialDocumentos() {
           </table>
         </div>
       </EmptyState>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Eliminar documento"
+        description={deleteTarget ? `${deleteTarget.tipo}` : ""}
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget.id)}
+      />
     </div>
   );
 }

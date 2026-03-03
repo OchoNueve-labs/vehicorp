@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { useApi } from "@/lib/hooks/use-api";
 import { apiPost } from "@/lib/api";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { KpiCard } from "@/components/shared/KpiCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +23,7 @@ export default function VendedoresPage() {
   const [editing, setEditing] = useState<Vendedor | null>(null);
   const [form, setForm] = useState({ nombre: "", tipo_comision: "porcentaje", comision_valor: 3 });
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Vendedor | null>(null);
 
   const vendedores = data?.vendedores || [];
   const comisiones = finData?.comisiones_por_vendedor || {};
@@ -42,7 +45,7 @@ export default function VendedoresPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.nombre) { alert("Nombre es obligatorio"); return; }
+    if (!form.nombre) { toast.error("Nombre es obligatorio"); return; }
     setSaving(true);
     try {
       if (editing) {
@@ -51,21 +54,21 @@ export default function VendedoresPage() {
         await apiPost("vendedores", { ...form, comision_valor: Number(form.comision_valor) });
       }
       setOpen(false);
+      toast.success(editing ? "Vendedor actualizado" : "Vendedor creado");
       refetch();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error");
+      toast.error(err instanceof Error ? err.message : "Error");
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(v: Vendedor) {
-    if (!confirm(`¿Eliminar a ${v.nombre}?`)) return;
     try {
       await apiPost("vendedores-delete", { id: v.id });
       refetch();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error");
+      toast.error(err instanceof Error ? err.message : "Error");
     }
   }
 
@@ -99,7 +102,7 @@ export default function VendedoresPage() {
                     </div>
                     <div className="flex gap-1">
                       <Button size="sm" variant="ghost" onClick={() => openEdit(v)}><Edit className="h-3.5 w-3.5" /></Button>
-                      <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(v)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteTarget(v)}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   </div>
                   {com && (
@@ -146,6 +149,14 @@ export default function VendedoresPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title={`¿Eliminar a ${deleteTarget?.nombre}?`}
+        description="Esta acción no se puede deshacer."
+        onConfirm={() => { if (deleteTarget) handleDelete(deleteTarget); }}
+      />
     </div>
   );
 }

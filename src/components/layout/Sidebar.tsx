@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import { Car } from "lucide-react";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -14,8 +15,8 @@ export function Sidebar() {
       <div className="flex items-center gap-2 px-6 py-5 border-b">
         <Car className="h-7 w-7 text-primary" />
         <div>
-          <span className="text-lg font-bold">IAuto</span>
-          <p className="text-xs text-muted-foreground">CRM para Automotoras</p>
+          <span className="text-lg font-bold">Vehicorp</span>
+          <p className="text-xs text-muted-foreground">CRM Automotora</p>
         </div>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1">
@@ -39,6 +40,9 @@ export function Sidebar() {
           );
         })}
       </nav>
+      <div className="px-3 py-3 border-t">
+        <ThemeToggle />
+      </div>
     </aside>
   );
 }

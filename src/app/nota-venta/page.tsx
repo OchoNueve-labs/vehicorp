@@ -8,8 +8,10 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
 import { formatCLP, formatDate } from "@/lib/utils";
 import type { Vehiculo, Cliente, Vendedor, NotaVenta, StandardResponse } from "@/lib/types";
 
@@ -34,7 +36,6 @@ function NuevaNotaForm() {
   const { data: cliData } = useApi<{ clientes: Cliente[]; cantidad: number }>("clientes");
   const { data: venData } = useApi<{ vendedores: Vendedor[]; cantidad: number }>("vendedores");
   const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState(false);
 
   const vehiculos = vehData?.vehiculos || [];
   const clientes = cliData?.clientes || [];
@@ -66,7 +67,7 @@ function NuevaNotaForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!vehiculoId || !clienteId || !vendedorId) {
-      alert("Selecciona vehículo, cliente y vendedor");
+      toast.error("Selecciona vehículo, cliente y vendedor");
       return;
     }
     setSaving(true);
@@ -101,23 +102,24 @@ function NuevaNotaForm() {
           ...(esReserva ? { monto_reserva: montoReserva } : {}),
         },
       });
-      setSuccess(true);
+      toast.success("Nota de venta creada exitosamente");
+      setVehiculoId("");
+      setClienteId("");
+      setVendedorId("");
+      setDescuento(0);
+      setCostoTransferencia(400000);
+      setFormaPago("Contado");
+      setMontoFinanciado(0);
+      setMargenFinanciamiento(0);
+      setTieneRetoma(false);
+      setRetomaDetalle("");
+      setEsReserva(false);
+      setMontoReserva(0);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error al crear nota");
+      toast.error(err instanceof Error ? err.message : "Error al crear nota");
     } finally {
       setSaving(false);
     }
-  }
-
-  if (success) {
-    return (
-      <Card className="mt-4">
-        <CardContent className="p-8 text-center space-y-3">
-          <p className="text-lg font-semibold text-emerald-400">Nota de venta creada exitosamente</p>
-          <Button onClick={() => setSuccess(false)}>Crear otra nota</Button>
-        </CardContent>
-      </Card>
-    );
   }
 
   return (
@@ -163,7 +165,7 @@ function NuevaNotaForm() {
           </div>
           <div>
             <Label className="text-xs">Descuento</Label>
-            <input type="number" className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm" value={descuento} onChange={(e) => setDescuento(Number(e.target.value))} />
+            <Input type="number" value={descuento} onChange={(e) => setDescuento(Number(e.target.value))} />
           </div>
           <div>
             <Label className="text-xs">Valor Final</Label>
@@ -171,7 +173,7 @@ function NuevaNotaForm() {
           </div>
           <div>
             <Label className="text-xs">Costo Transferencia</Label>
-            <input type="number" className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm" value={costoTransferencia} onChange={(e) => setCostoTransferencia(Number(e.target.value))} />
+            <Input type="number" value={costoTransferencia} onChange={(e) => setCostoTransferencia(Number(e.target.value))} />
           </div>
           <div className="col-span-2 md:col-span-4">
             <p className="text-sm font-bold">Total Cliente: {formatCLP(totalCliente)}</p>
@@ -195,11 +197,11 @@ function NuevaNotaForm() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Monto Financiado</Label>
-                <input type="number" className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm" value={montoFinanciado} onChange={(e) => setMontoFinanciado(Number(e.target.value))} />
+                <Input type="number" value={montoFinanciado} onChange={(e) => setMontoFinanciado(Number(e.target.value))} />
               </div>
               <div>
                 <Label className="text-xs">Margen Financiamiento ($)</Label>
-                <input type="number" className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm" value={margenFinanciamiento} onChange={(e) => setMargenFinanciamiento(Number(e.target.value))} />
+                <Input type="number" value={margenFinanciamiento} onChange={(e) => setMargenFinanciamiento(Number(e.target.value))} />
               </div>
             </div>
           )}
@@ -249,7 +251,7 @@ function NuevaNotaForm() {
           {esReserva && (
             <div>
               <Label className="text-xs">Monto Reserva</Label>
-              <input type="number" className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm" value={montoReserva} onChange={(e) => setMontoReserva(Number(e.target.value))} />
+              <Input type="number" value={montoReserva} onChange={(e) => setMontoReserva(Number(e.target.value))} />
             </div>
           )}
         </CardContent>
