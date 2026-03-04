@@ -19,6 +19,7 @@ import type { Cliente } from "@/lib/types";
 const EMPTY_FORM = {
   nombre: "", rut: "", nacionalidad: "", estado_civil: "",
   correo: "", telefono: "", direccion: "", ciudad: "", comuna: "",
+  created_at: new Date().toISOString().split("T")[0],
 };
 
 export default function ClientesPage() {
@@ -56,6 +57,7 @@ export default function ClientesPage() {
       direccion: c.direccion || "",
       ciudad: c.ciudad || "",
       comuna: c.comuna || "",
+      created_at: "",
     });
     setOpen(true);
   }
@@ -69,7 +71,8 @@ export default function ClientesPage() {
     setSaving(true);
     try {
       if (editing) {
-        await apiPost("clientes-update", { id: editing.id, ...form });
+        const { created_at, ...editData } = form;
+        await apiPost("clientes-update", { id: editing.id, ...editData });
       } else {
         await apiPost("clientes", form);
       }
@@ -180,6 +183,12 @@ export default function ClientesPage() {
               <Label className="text-xs">Comuna</Label>
               <Input value={form.comuna} onChange={(e) => setForm({ ...form, comuna: e.target.value })} />
             </div>
+            {!editing && (
+              <div>
+                <Label className="text-xs">Fecha de Registro</Label>
+                <Input type="date" value={form.created_at} onChange={(e) => setForm({ ...form, created_at: e.target.value })} />
+              </div>
+            )}
             <div className="col-span-2">
               <Button type="submit" className="w-full" disabled={saving}>
                 {saving ? "Guardando..." : editing ? "Guardar Cambios" : "Crear Cliente"}

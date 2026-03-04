@@ -16,6 +16,25 @@ const ALLOWED_PATHS = new Set([
   "documentos-generar", "documentos-historial", "documentos-delete",
 ]);
 
+const ADMIN_PWD = process.env.ADMIN_PASSWORD;
+const VENDEDOR_PWD = process.env.VENDEDOR_PASSWORD;
+
+async function handleAuth(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { password } = body;
+    if (ADMIN_PWD && password === ADMIN_PWD) {
+      return NextResponse.json({ success: true, role: "admin" });
+    }
+    if (VENDEDOR_PWD && password === VENDEDOR_PWD) {
+      return NextResponse.json({ success: true, role: "vendedor" });
+    }
+    return NextResponse.json({ success: false, error: "Clave incorrecta" }, { status: 401 });
+  } catch {
+    return NextResponse.json({ success: false, error: "Solicitud inválida" }, { status: 400 });
+  }
+}
+
 async function proxy(req: NextRequest, method: string) {
   if (!N8N_URL || !API_KEY) {
     return NextResponse.json(
@@ -25,6 +44,10 @@ async function proxy(req: NextRequest, method: string) {
   }
 
   const pathSegments = req.nextUrl.pathname.replace("/api/vehicorp/", "");
+
+  if (pathSegments === "auth" && method === "POST") {
+    return handleAuth(req);
+  }
 
   if (!ALLOWED_PATHS.has(pathSegments)) {
     return NextResponse.json(

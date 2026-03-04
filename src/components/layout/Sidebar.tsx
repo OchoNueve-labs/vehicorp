@@ -1,14 +1,31 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
-import { Car } from "lucide-react";
+import { Car, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRole(localStorage.getItem("vehicorp_role"));
+  }, []);
+
+  const visibleItems = NAV_ITEMS.filter(
+    (item) => role === "admin" || !item.adminOnly
+  );
+
+  function handleLogout() {
+    localStorage.removeItem("vehicorp_role");
+    router.push("/login");
+  }
 
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 border-r bg-card">
@@ -20,7 +37,7 @@ export function Sidebar() {
         </div>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {NAV_ITEMS.map((item) => {
+        {visibleItems.map((item) => {
           const isActive =
             item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
           return (
@@ -40,8 +57,17 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <div className="px-3 py-3 border-t">
+      <div className="px-3 py-3 border-t space-y-2">
         <ThemeToggle />
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start text-muted-foreground"
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Cerrar sesión
+        </Button>
       </div>
     </aside>
   );

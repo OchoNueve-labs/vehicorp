@@ -179,6 +179,7 @@ function VehiculoForm() {
     gastos: 0,
     precio_venta: 0,
     notas: "",
+    fecha_ingreso: new Date().toISOString().split("T")[0],
   });
 
   function update(field: string, value: string | number) {
@@ -240,6 +241,15 @@ function VehiculoForm() {
               </select>
             </div>
             <Field label="Ubicación" value={form.ubicacion} onChange={(v) => update("ubicacion", v)} />
+            <div>
+              <label className="text-xs text-muted-foreground">Fecha Ingreso</label>
+              <input
+                type="date"
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                value={form.fecha_ingreso}
+                onChange={(e) => update("fecha_ingreso", e.target.value)}
+              />
+            </div>
             <div className="col-span-2">
               <label className="text-xs text-muted-foreground">Notas</label>
               <textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[60px]" value={form.notas} onChange={(e) => update("notas", e.target.value)} />

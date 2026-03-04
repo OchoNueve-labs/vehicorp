@@ -10,14 +10,14 @@ import {
 } from "lucide-react";
 
 export const NAV_ITEMS = [
-  { label: "Inicio", href: "/", icon: LayoutDashboard },
-  { label: "Inventario", href: "/inventario", icon: Car },
-  { label: "Nota de Venta", href: "/nota-venta", icon: Receipt },
-  { label: "Arriendos", href: "/arriendos", icon: Key },
-  { label: "Documentos", href: "/documentos", icon: FileText },
-  { label: "Clientes", href: "/clientes", icon: Users },
-  { label: "Costos Operativos", href: "/costos-fijos", icon: DollarSign },
-  { label: "Vendedores", href: "/vendedores", icon: UserCheck },
+  { label: "Inicio", href: "/", icon: LayoutDashboard, adminOnly: true },
+  { label: "Inventario", href: "/inventario", icon: Car, adminOnly: false },
+  { label: "Nota de Venta", href: "/nota-venta", icon: Receipt, adminOnly: false },
+  { label: "Arriendos", href: "/arriendos", icon: Key, adminOnly: false },
+  { label: "Documentos", href: "/documentos", icon: FileText, adminOnly: false },
+  { label: "Clientes", href: "/clientes", icon: Users, adminOnly: false },
+  { label: "Costos Operativos", href: "/costos-fijos", icon: DollarSign, adminOnly: false },
+  { label: "Vendedores", href: "/vendedores", icon: UserCheck, adminOnly: false },
 ] as const;
 
 export const ESTADO_COLORS: Record<string, string> = {

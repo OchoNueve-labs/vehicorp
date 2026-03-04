@@ -63,6 +63,7 @@ function NuevaNotaForm() {
   const [montoReserva, setMontoReserva] = useState(0);
   const [reservaFechaVencimiento, setReservaFechaVencimiento] = useState("");
   const [reservaNotas, setReservaNotas] = useState("");
+  const [fecha, setFecha] = useState(new Date().toISOString().split("T")[0]);
 
   const veh = vehiculos.find((v) => v.id === vehiculoId);
   const cli = clientes.find((c) => c.id === clienteId);
@@ -91,6 +92,7 @@ function NuevaNotaForm() {
     setSaving(true);
     try {
       await apiPost("notas-venta", {
+        fecha,
         id_vehiculo: vehiculoId,
         id_cliente: clienteId,
         transaccion: {
@@ -150,6 +152,7 @@ function NuevaNotaForm() {
       setMontoReserva(0);
       setReservaFechaVencimiento("");
       setReservaNotas("");
+      setFecha(new Date().toISOString().split("T")[0]);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al crear nota");
     } finally {
@@ -159,6 +162,16 @@ function NuevaNotaForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+      {/* Fecha */}
+      <Card>
+        <CardContent className="pt-4">
+          <div className="max-w-xs">
+            <Label className="text-xs">Fecha de la Nota</Label>
+            <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Vehículo */}
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm">Vehículo</CardTitle></CardHeader>
