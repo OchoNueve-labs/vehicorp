@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { formatCLP, formatDate } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeftRight, Bookmark, Pencil } from "lucide-react";
+import { AlertCircle, ArrowLeftRight, Bookmark, Pencil, Trash2 } from "lucide-react";
 import type { Vehiculo, Cliente, Vendedor, NotaVenta, StandardResponse } from "@/lib/types";
 
 export default function NotaVentaPage() {
@@ -383,6 +383,21 @@ function NuevaNotaForm() {
         </CardContent>
       </Card>
 
+      {(!vehiculoId || !clienteId || !vendedorId) && (
+        <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-400">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>
+            Selecciona
+            {!vehiculoId && " vehículo"}
+            {!vehiculoId && (!clienteId || !vendedorId) && ","}
+            {!clienteId && " cliente"}
+            {!clienteId && !vendedorId && " y"}
+            {!vendedorId && " vendedor"}
+            {" "}para crear la nota.
+          </span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           {esReserva && (
@@ -409,7 +424,7 @@ function NuevaNotaForm() {
           <Button
             type="submit"
             className={esReserva ? "bg-purple-600 hover:bg-purple-700" : ""}
-            disabled={saving}
+            disabled={saving || !vehiculoId || !clienteId || !vendedorId}
           >
             {saving
               ? (esReserva ? "Generando reserva..." : "Creando nota...")
@@ -428,6 +443,21 @@ function HistorialNotas() {
   const [filterDesde, setFilterDesde] = useState("");
   const [filterHasta, setFilterHasta] = useState("");
   const [editNota, setEditNota] = useState<NotaVenta | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  async function handleDelete(nota: NotaVenta) {
+    if (!confirm(`¿Eliminar nota ${nota.id}? El vehículo volverá a estado Disponible.`)) return;
+    setDeleting(nota.id);
+    try {
+      await apiPost("notas-venta-delete", { id: nota.id });
+      toast.success("Nota eliminada");
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al eliminar");
+    } finally {
+      setDeleting(null);
+    }
+  }
 
   const notas = allNotas.filter((n) => {
     if (filterDesde && n.fecha < filterDesde) return false;
@@ -476,9 +506,12 @@ function HistorialNotas() {
                   <td className="py-2 pr-3">{n.cliente_nombre}</td>
                   <td className="py-2 pr-3 font-semibold">{formatCLP(n.valor_final)}</td>
                   <td className="py-2"><StatusBadge status={n.estado} /></td>
-                  <td className="py-2">
+                  <td className="py-2 flex gap-1">
                     <Button size="sm" variant="ghost" onClick={() => setEditNota(n)}>
                       <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300" onClick={() => handleDelete(n)} disabled={deleting === n.id}>
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </td>
                 </tr>
