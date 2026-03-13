@@ -6,7 +6,7 @@ const API_KEY = process.env.N8N_API_KEY;
 const ALLOWED_PATHS = new Set([
   "inventario", "inventario-disponible", "inventario-update",
   "inventario-delete", "inventario-get", "inventario-estado",
-  "ventas", "notas-venta",
+  "ventas", "notas-venta", "notas-venta-update",
   "clientes", "clientes-update", "clientes-delete",
   "vendedores", "vendedores-update", "vendedores-delete",
   "costos-fijos", "costos-fijos-update", "costos-fijos-delete",

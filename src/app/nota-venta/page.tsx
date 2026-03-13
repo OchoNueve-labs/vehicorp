@@ -15,7 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { formatCLP, formatDate } from "@/lib/utils";
-import { ArrowLeftRight, Bookmark } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowLeftRight, Bookmark, Pencil } from "lucide-react";
 import type { Vehiculo, Cliente, Vendedor, NotaVenta, StandardResponse } from "@/lib/types";
 
 export default function NotaVentaPage() {
@@ -93,25 +94,48 @@ function NuevaNotaForm() {
     try {
       await apiPost("notas-venta", {
         fecha,
-        id_vehiculo: vehiculoId,
+        vehiculo_id: vehiculoId,
         id_cliente: clienteId,
+        vendedor_id: vendedorId,
+        vendedor: vend?.nombre || "",
+
+        // Vehicle details (denormalized)
+        vehiculo_detalle: veh ? `${veh.marca || ""} ${veh.modelo} ${veh.patente}`.trim() : "",
+        marca: veh?.marca || "",
+        modelo: veh?.modelo || "",
+        año: veh?.ano || 0,
+        patente: veh?.patente || "",
+        color: veh?.color || "",
+        kms: veh?.kilometros || 0,
+
+        // Transaction with computed values
         transaccion: {
           valor_vehiculo: valorVehiculo,
           descuento,
+          valor_final: valorFinal,
           costo_transferencia: costoTransferencia,
+          transferencia_costo: costoTransferencia,
+          total_cliente: totalCliente,
           forma_pago_tipo: formaPago,
-          ...(formaPago === "Financiamiento" ? { monto_financiado: montoFinanciado, margen_financiamiento: margenFinanciamiento } : {}),
         },
+
+        // Top-level fields n8n reads from body.*
+        forma_pago_tipo: formaPago,
+        monto_financiado: formaPago === "Financiamiento" ? montoFinanciado : 0,
+        margen_financiamiento: formaPago === "Financiamiento" ? margenFinanciamiento : 0,
+
+        // Commission
+        tipo_comision: vend?.tipo_comision || "porcentaje",
+        comision_valor: vend?.comision_valor || 0,
+
         cliente: {
           nombre: cli?.nombre || "",
           rut: cli?.rut || "",
           email: cli?.correo || "",
           telefono: cli?.telefono || "",
-        },
-        vendedor: {
-          id: vendedorId,
-          nombre: vend?.nombre || "",
-          comision_porcentaje: comisionPorcentaje,
+          direccion: cli?.direccion || "",
+          ciudad: cli?.ciudad || "",
+          comuna: cli?.comuna || "",
         },
         retoma: {
           tiene: tieneRetoma,
@@ -399,10 +423,11 @@ function NuevaNotaForm() {
 }
 
 function HistorialNotas() {
-  const { data, loading, error } = useApi<StandardResponse<NotaVenta[]>>("notas-venta");
+  const { data, loading, error, refetch } = useApi<StandardResponse<NotaVenta[]>>("notas-venta");
   const allNotas = data?.data || [];
   const [filterDesde, setFilterDesde] = useState("");
   const [filterHasta, setFilterHasta] = useState("");
+  const [editNota, setEditNota] = useState<NotaVenta | null>(null);
 
   const notas = allNotas.filter((n) => {
     if (filterDesde && n.fecha < filterDesde) return false;
@@ -439,6 +464,7 @@ function HistorialNotas() {
                 <th className="py-2 pr-3">Cliente</th>
                 <th className="py-2 pr-3">Valor Final</th>
                 <th className="py-2 pr-3">Estado</th>
+                <th className="py-2 pr-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -450,12 +476,234 @@ function HistorialNotas() {
                   <td className="py-2 pr-3">{n.cliente_nombre}</td>
                   <td className="py-2 pr-3 font-semibold">{formatCLP(n.valor_final)}</td>
                   <td className="py-2"><StatusBadge status={n.estado} /></td>
+                  <td className="py-2">
+                    <Button size="sm" variant="ghost" onClick={() => setEditNota(n)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </EmptyState>
+
+      {editNota && (
+        <EditNotaDialog
+          nota={editNota}
+          open={!!editNota}
+          onClose={() => setEditNota(null)}
+          onSaved={() => { setEditNota(null); refetch(); }}
+        />
+      )}
     </div>
+  );
+}
+
+function EditNotaDialog({ nota, open, onClose, onSaved }: { nota: NotaVenta; open: boolean; onClose: () => void; onSaved: () => void }) {
+  const [saving, setSaving] = useState(false);
+  const [fecha, setFecha] = useState(nota.fecha?.split("T")[0] || "");
+  const [descuento, setDescuento] = useState(nota.descuento || 0);
+  const [costoTransferencia, setCostoTransferencia] = useState(nota.costo_transferencia || 400000);
+  const [formaPago, setFormaPago] = useState(nota.forma_pago || "Contado");
+  const [montoFinanciado, setMontoFinanciado] = useState(nota.monto_financiado || 0);
+  const [margenFinanciamiento, setMargenFinanciamiento] = useState(nota.margen_financiamiento || 0);
+  const [tieneRetoma, setTieneRetoma] = useState(nota.tiene_retoma || false);
+  const [retomaMarca, setRetomaMarca] = useState(nota.retoma_marca || "");
+  const [retomaModelo, setRetomaModelo] = useState(nota.retoma_modelo || "");
+  const [retomaPatente, setRetomaPatente] = useState(nota.retoma_patente || "");
+  const [retomaAno, setRetomaAno] = useState(nota.retoma_ano || 0);
+  const [retomaKms, setRetomaKms] = useState(nota.retoma_kms || 0);
+  const [retomaValor, setRetomaValor] = useState(nota.retoma_valor || 0);
+  const [esReserva, setEsReserva] = useState(nota.es_reserva || false);
+  const [montoReserva, setMontoReserva] = useState(nota.monto_reserva || 0);
+  const [reservaFechaVencimiento, setReservaFechaVencimiento] = useState(nota.reserva_fecha_vencimiento?.split("T")[0] || "");
+  const [reservaNotas, setReservaNotas] = useState(nota.reserva_notas || "");
+  const [estado, setEstado] = useState(nota.estado || "Completada");
+
+  const valorVehiculo = nota.valor_vehiculo || 0;
+  const valorFinal = valorVehiculo - descuento;
+  const totalCliente = valorFinal + costoTransferencia - (tieneRetoma ? retomaValor : 0);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const retomaDetalle = tieneRetoma ? [retomaMarca, retomaModelo, retomaPatente, retomaAno].filter(Boolean).join(" ") : "";
+      await apiPost("notas-venta-update", {
+        id: nota.id,
+        fecha,
+        descuento,
+        costo_transferencia: costoTransferencia,
+        valor_final: valorFinal,
+        total_cliente: totalCliente,
+        forma_pago: formaPago,
+        monto_financiado: formaPago === "Financiamiento" ? montoFinanciado : 0,
+        margen_financiamiento: formaPago === "Financiamiento" ? margenFinanciamiento : 0,
+        tiene_retoma: tieneRetoma,
+        retoma_marca: tieneRetoma ? retomaMarca : null,
+        retoma_modelo: tieneRetoma ? retomaModelo : null,
+        retoma_patente: tieneRetoma ? retomaPatente : null,
+        retoma_ano: tieneRetoma ? retomaAno : null,
+        retoma_kms: tieneRetoma ? retomaKms : null,
+        retoma_valor: tieneRetoma ? retomaValor : 0,
+        retoma_detalle: retomaDetalle,
+        es_reserva: esReserva,
+        monto_reserva: esReserva ? montoReserva : 0,
+        reserva_fecha_vencimiento: esReserva ? reservaFechaVencimiento || null : null,
+        reserva_notas: esReserva ? reservaNotas || null : null,
+        estado,
+      });
+      toast.success("Nota de venta actualizada");
+      onSaved();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al actualizar nota");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Editar Nota {nota.id}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          {/* Info no editable */}
+          <Card>
+            <CardContent className="pt-4 grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <Label className="text-xs text-muted-foreground">Vehículo</Label>
+                <p>{nota.vehiculo_detalle || `${nota.marca || ""} ${nota.modelo || ""} ${nota.patente || ""}`.trim()}</p>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Cliente</Label>
+                <p>{nota.cliente_nombre}</p>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Vendedor</Label>
+                <p>{nota.vendedor_nombre}</p>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Valor Vehículo</Label>
+                <p className="font-semibold">{formatCLP(valorVehiculo)}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Fecha + Estado */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Fecha</Label>
+              <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">Estado</Label>
+              <select className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm" value={estado} onChange={(e) => setEstado(e.target.value)}>
+                <option value="Completada">Completada</option>
+                <option value="Reserva">Reserva</option>
+                <option value="Anulada">Anulada</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Transacción */}
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Transacción</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <Label className="text-xs">Descuento</Label>
+                <Input type="number" value={descuento} onChange={(e) => setDescuento(Number(e.target.value))} />
+              </div>
+              <div>
+                <Label className="text-xs">Costo Transferencia</Label>
+                <Input type="number" value={costoTransferencia} onChange={(e) => setCostoTransferencia(Number(e.target.value))} />
+              </div>
+              <div>
+                <Label className="text-xs">Valor Final</Label>
+                <p className="text-sm font-bold mt-1 text-emerald-400">{formatCLP(valorFinal)}</p>
+              </div>
+              <div>
+                <Label className="text-xs">Total Cliente</Label>
+                <p className="text-sm font-bold mt-1">{formatCLP(totalCliente)}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Forma de Pago */}
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Forma de Pago</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="radio" name="editFormaPago" value="Contado" checked={formaPago === "Contado"} onChange={() => setFormaPago("Contado")} /> Contado
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="radio" name="editFormaPago" value="Financiamiento" checked={formaPago === "Financiamiento"} onChange={() => setFormaPago("Financiamiento")} /> Financiamiento
+                </label>
+              </div>
+              {formaPago === "Financiamiento" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Monto Financiado</Label>
+                    <Input type="number" value={montoFinanciado} onChange={(e) => setMontoFinanciado(Number(e.target.value))} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Margen Financiamiento ($)</Label>
+                    <Input type="number" value={margenFinanciamiento} onChange={(e) => setMargenFinanciamiento(Number(e.target.value))} />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Retoma */}
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><ArrowLeftRight className="h-4 w-4 text-muted-foreground" /> Retoma</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Switch checked={tieneRetoma} onCheckedChange={setTieneRetoma} />
+                <Label className="text-sm">Incluye retoma</Label>
+              </div>
+              {tieneRetoma && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div><Label className="text-xs">Marca</Label><Input value={retomaMarca} onChange={(e) => setRetomaMarca(e.target.value)} /></div>
+                  <div><Label className="text-xs">Modelo</Label><Input value={retomaModelo} onChange={(e) => setRetomaModelo(e.target.value)} /></div>
+                  <div><Label className="text-xs">Patente</Label><Input value={retomaPatente} onChange={(e) => setRetomaPatente(e.target.value)} /></div>
+                  <div><Label className="text-xs">Año</Label><Input type="number" value={retomaAno || ""} onChange={(e) => setRetomaAno(Number(e.target.value))} /></div>
+                  <div><Label className="text-xs">Kilómetros</Label><Input type="number" value={retomaKms || ""} onChange={(e) => setRetomaKms(Number(e.target.value))} /></div>
+                  <div><Label className="text-xs">Valor Retoma</Label><Input type="number" value={retomaValor || ""} onChange={(e) => setRetomaValor(Number(e.target.value))} /></div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Reserva */}
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Bookmark className="h-4 w-4 text-muted-foreground" /> Reserva</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Switch checked={esReserva} onCheckedChange={setEsReserva} />
+                <Label className="text-sm">Es reserva</Label>
+              </div>
+              {esReserva && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div><Label className="text-xs">Monto Reserva</Label><Input type="number" value={montoReserva || ""} onChange={(e) => setMontoReserva(Number(e.target.value))} /></div>
+                  <div><Label className="text-xs">Fecha Vencimiento</Label><Input type="date" value={reservaFechaVencimiento} onChange={(e) => setReservaFechaVencimiento(e.target.value)} /></div>
+                  <div className="md:col-span-2"><Label className="text-xs">Notas</Label><Textarea value={reservaNotas} onChange={(e) => setReservaNotas(e.target.value)} /></div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Guardando..." : "Guardar Cambios"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
