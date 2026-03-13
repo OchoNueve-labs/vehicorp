@@ -218,6 +218,7 @@ export interface DashboardFinanciero {
     total_ventas: number;
     utilidad_bruta: number;
     margen_financiamiento: number;
+    ingresos_arriendo: number;
     costos_fijos: number;
     comisiones: number;
     utilidad_neta: number;

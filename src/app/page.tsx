@@ -26,6 +26,7 @@ import {
   Clock,
   AlertTriangle,
   CalendarDays,
+  Home,
 } from "lucide-react";
 import {
   PieChart,
@@ -185,10 +186,11 @@ export default function DashboardPage() {
         <h2 className="text-sm font-medium text-muted-foreground mb-3">
           Resumen Financiero {finData?.periodo ? `(${finData.periodo.desde} — ${finData.periodo.hasta})` : ""}
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
           <KpiCard title="Total Ventas" value={formatCLP(fin?.total_ventas)} icon={DollarSign} loading={loading} />
           <KpiCard title="Utilidad Bruta" value={formatCLP(fin?.utilidad_bruta)} icon={TrendingUp} loading={loading} valueColor={(fin?.utilidad_bruta ?? 0) < 0 ? "text-red-500" : "text-emerald-500"} />
           <KpiCard title="Financiamiento" value={formatCLP(fin?.margen_financiamiento)} icon={Percent} loading={loading} valueColor="text-blue-500" />
+          <KpiCard title="Arriendos" value={formatCLP(fin?.ingresos_arriendo)} icon={Home} loading={loading} valueColor="text-cyan-500" />
           <KpiCard title="Costos Operativos" value={formatCLP(fin?.costos_fijos)} icon={Receipt} loading={loading} />
           <KpiCard title="Comisiones" value={formatCLP(fin?.comisiones)} icon={Percent} loading={loading} />
           <KpiCard title="Utilidad Neta" value={formatCLP(fin?.utilidad_neta)} icon={Wallet} loading={loading} valueColor={(fin?.utilidad_neta ?? 0) < 0 ? "text-red-500" : "text-emerald-500"} />
